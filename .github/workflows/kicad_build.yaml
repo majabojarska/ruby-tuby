@@ -1,0 +1,59 @@
+name: Generate KiCad artifacts
+
+on:
+  push:
+    branches:
+      - main
+
+    # This is needed, otherwise commiting fresh artifacts will trigger this job again
+    paths-ignore:
+      - "static/**"
+
+env:
+  STATIC_DIR: "static"
+
+jobs:
+  build:
+    name: Generate KiCad artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    container:
+      image: "kicad/kicad:9.0"
+      options: --user root
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fix Git repo ownership
+        run: |
+          # this is to fix GIT not liking owner of the checkout dir
+          chown -R $(id -u):$(id -g) $PWD
+
+      - name: Install dependencies
+        run: |
+          apt update && apt install make -y
+
+      - name: Link KiCad .config dir to root equivalent
+        run: |
+          mkdir -p ~/.config
+          ln -s /home/kicad/.config/kicad ~/.config/kicad
+
+      - name: Ensure output dir exists
+        run: mkdir -p ${{ env.STATIC_DIR }}
+
+      - name: Generate schematics
+        run: |
+          make schematics STATIC_DIR=${{ env.STATIC_DIR }}
+
+      - name: Generate BOM
+        run: |
+          make bom STATIC_DIR=${{ env.STATIC_DIR }}
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: "kicad_artifacts"
+          path: "${{ env.STATIC_DIR }}"
+
+      - name: Auto commit
+        uses: stefanzweifel/git-auto-commit-action@v5
