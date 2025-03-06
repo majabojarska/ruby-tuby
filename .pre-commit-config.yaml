@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: kicad-erc
+        name: KiCad ERC
+        entry: make erc
+        language: system
+        pass_filenames: false
+        files: \.kicad_sch$
